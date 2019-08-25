@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.0/axios.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-router-dom/5.0.1/react-router-dom.js"></script>
+</head>
+
+<style>
+  body {
+    font-family: sans-serif;
+  }
+  
+  nav {
+    display: flex;
+    justify-content: space-around;
+  }
+
+  li {
+    list-style-type: none;
+  }
+</style>
+
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { render } = ReactDOM
+    const { Component } = React
+    const { Route, HashRouter, Link, Switch, Redirect } = ReactRouterDOM
+
+    const Nav = ({ products }) => {
+      return (
+        <nav>
+          <Link to = "/home">Home</Link>
+          <Link to = "/products">Products</Link>
+        </nav>
+      )
+    }
+
+    const Home = ({ products }) => {
+      let avgPrice = 0
+      if(products.length) avgPrice = (products.reduce((acc, product) => (acc + product.suggestedPrice),0))/(products.length)
+      return (
+        <h2>We have {products.length} products with an avg price of {avgPrice}</h2>
+      )
+    }
+
+    const Products = ({ products, offerings }) => {
+      const arr = products.map(product => {
+        const offer = offerings.filter(offering => offering.productId === product.id)
+        const avgPrice = (offer.reduce((sum, _offer) => (sum + _offer.price),0))/(offer.length)
+        const lowestPrice = offer.reduce((acc, offer) => (acc > offer.price ? acc = offer.price : acc),100)
+        return ({id: product.id, name: product.name, suggestedPrice: product.suggestedPrice, avgPrice: avgPrice, lowestPrice : lowestPrice})
+      })
+      return (
+        <div>
+          <h2>Products</h2>
+          <ul>
+            {arr.map(el => <li key = {el.id}>
+                  <ul>
+                    <li><b>Product: </b>{el.name}</li>
+                    <li><b>Suggested Price: </b>{el.suggestedPrice}</li>
+                    <li><b>Average Price: </b>{el.avgPrice}</li>
+                    <li><b>Lowest Price: </b>{el.lowestPrice}</li>
+                    <li><hr/></li>
+                  </ul>
+                </li>
+            )}
+          </ul>
+        </div>
+        )
+    }
+
+    class App extends Component{
+      constructor(){
+          super()
+          this.state = {
+            products: [],
+            offerings: []
+          }
+      }
+
+      async componentDidMount() {
+        const api = "https://acme-users-api-rev.herokuapp.com/api/"
+        const products = (await axios.get(api + "products")).data
+        const offerings = (await axios.get(api + "offerings")).data
+        this.setState({ products, offerings })
+      }
+
+      render() {
+        const { products , offerings } = this.state
+        return (
+        <HashRouter>
+          <h2>Acme Products Averages React</h2>
+          <Route render = { ({ location }) => <Nav products = { products } /> } />
+          <Switch>
+            <Route path = '/home' render = { () => <Home products = { products } /> }/>
+            <Route path = '/products' render = { () => <Products products = { products } offerings = { offerings }/> }/>
+          </Switch>
+        </HashRouter>
+        )
+      }
+    }
+
+    render(<App />, root)
+
+  </script>
+</body>
+</html>
